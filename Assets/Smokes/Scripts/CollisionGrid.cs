@@ -78,11 +78,11 @@ public class CollisionGrid : System.IDisposable
             bool startingBoundsFound = false;
             for (int i = 0, count = rootObjects.Length; i < count; i++)
             {
-                if (!startingBoundsFound && GetChildRendererBounds(rootObjects[i], out bounds))
+                if (!startingBoundsFound && GetChildBounds(rootObjects[i], out bounds))
                 {
                     startingBoundsFound = true;
                 }
-                else if (GetChildRendererBounds(rootObjects[i], out var aabb))
+                else if (GetChildBounds(rootObjects[i], out var aabb))
                 {
                     bounds.Encapsulate(aabb);
                 }
@@ -95,7 +95,7 @@ public class CollisionGrid : System.IDisposable
         }
     }
 
-    bool GetChildRendererBounds(GameObject go, out Bounds bounds)
+    bool GetChildBounds(GameObject go, out Bounds bounds)
     {
         Collider[] components = go.GetComponentsInChildren<Collider>();
         if (components.Length > 0)
@@ -215,34 +215,6 @@ public class CollisionGrid : System.IDisposable
             pos.x += m_VoxelSize;
         }
     }
-
-    public Vector3Int GetChunkID(Vector3 position, out Vector3 localChunkPos)
-    {
-        Vector3 localPosition = position - m_Bounds.min;
-
-        var id = new Vector3Int(
-            Mathf.FloorToInt(localPosition.x / (m_VoxelSize * 8)),
-            Mathf.FloorToInt(localPosition.y / (m_VoxelSize * 8)),
-            Mathf.FloorToInt(localPosition.z / (m_VoxelSize * 8))
-        );
-
-        Vector3 chunkMin = (Vector3) id * m_VoxelSize * 8;
-        localChunkPos = localPosition - chunkMin;
-
-        return id;
-    }
-
-    public Vector3Int GetVoxelID(Vector3 localPos, Vector3Int chunkID)
-    {
-        var id = new Vector3Int(
-            Mathf.FloorToInt((localPos.x - chunkID.x * m_VoxelSize * 8) / m_VoxelSize),
-            Mathf.FloorToInt((localPos.y - chunkID.y * m_VoxelSize * 8) / m_VoxelSize),
-            Mathf.FloorToInt((localPos.z - chunkID.z * m_VoxelSize * 8) / m_VoxelSize)
-        );
-
-        return id;
-    }
-
 
     
     public bool TryGetVoxelInfo(Vector3 position, out VoxelGasJobs.VoxelInfo voxelInfo)

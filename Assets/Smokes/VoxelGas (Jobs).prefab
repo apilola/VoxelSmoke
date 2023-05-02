@@ -134,7 +134,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   maxVoxels: 4096
   frontierBounds: 512
-  voxelSize: 0.3
+  voxelSize: 0.25
   obstacleLayerMask:
     serializedVersion: 2
     m_Bits: 1

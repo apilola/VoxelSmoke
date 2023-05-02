@@ -22,10 +22,12 @@ public partial class VoxelGasJobs : MonoBehaviour
     NativeBitArray voxelFrontier;
     NativeList<Vector3Int> dirtyVoxels;
     NativeQueue<RaycastGuideData> hotCellsQueue;
+    NativeQueue<VoxelInfo> hotVoxelsQueue;
     NativeList<Vector3Int> hotCellPositions;
     NativeList<OverlapSphereCommand> commandsData;
     NativeList<ColliderHit> resultsData;
     NativeArray<Vector3> voxelPositionArray;
+    NativeArray<int> CountArray; 
 
     GraphicsBuffer voxelPositionBuffer;
     GraphicsBuffer voxelSizeBuffer;
@@ -44,6 +46,7 @@ public partial class VoxelGasJobs : MonoBehaviour
 
     bool isFirstBatchDirty = false;
     bool isSecondBatchDirty = false;
+
     private void Awake()
     {
         Allocate();
@@ -62,10 +65,12 @@ public partial class VoxelGasJobs : MonoBehaviour
         voxelFrontier = new NativeBitArray(frontierBounds * frontierBounds * frontierBounds, Allocator.Persistent, NativeArrayOptions.ClearMemory);
         dirtyVoxels = new NativeList<Vector3Int>(frontierBounds, Allocator.Persistent);
         hotCellsQueue = new NativeQueue<RaycastGuideData>(Allocator.Persistent);
+        hotVoxelsQueue = new NativeQueue<VoxelInfo>(Allocator.Persistent);
         voxelPositionArray = new NativeArray<Vector3>(maxVoxels, Allocator.Persistent);
         hotCellPositions = new NativeList<Vector3Int>(Allocator.Persistent);
         commandsData = new NativeList<OverlapSphereCommand>(Allocator.Persistent);
         resultsData = new NativeList<ColliderHit>(Allocator.Persistent);
+        CountArray = new NativeArray<int>(new int[] { 0 }, Allocator.Persistent);
 
         voxelPositionBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, maxVoxels, 12);
         voxelSizeBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, maxVoxels, 4);
@@ -80,6 +85,7 @@ public partial class VoxelGasJobs : MonoBehaviour
         var halfExtentInt = Mathf.CeilToInt(frontierBounds / 2);
         center = new Vector3Int(halfExtentInt, halfExtentInt, halfExtentInt);
 
+        center.y += 1;
         isAllocated = true;
     }
 
@@ -96,7 +102,25 @@ public partial class VoxelGasJobs : MonoBehaviour
         // Add a starting voxel at the center of the volume
         var voxelIndex = GetVoxelIndex(center);
         dirtyVoxels.Add(center);
-        GetVoxel(GetVoxelWorldPosition(center));
+        var wp = GetVoxelWorldPosition(center);
+
+        if (VoxelGasPool.CollisionGrid != null && VoxelGasPool.CollisionGrid.TryGetVoxelInfo(wp, out var info))
+        {
+            info.FrontierIndex = voxelIndex;
+            info.FrontierID = center;
+
+            var val = VoxelGasPool.CollisionGrid.Chunks[info.ChunkIndex].GetBit(info.VoxelIndex);
+            /*
+            Debug.Log($"VoxelInfo: has collision {val}");
+            Debug.Log("ChunkID: " + info.ChunkID);
+            Debug.Log("ChunkIndex: " + info.ChunkIndex);
+            Debug.Log("VoxelID: " + info.VoxelID);
+            Debug.Log("VoxelIndex: " + info.VoxelIndex);
+            */
+            hotVoxelsQueue.Enqueue(info);
+        }
+
+        GetVoxel(wp);
         SetVoxelVisited(voxelIndex);
     }
 
@@ -111,6 +135,8 @@ public partial class VoxelGasJobs : MonoBehaviour
         commandsData.Clear();
         resultsData.Clear();
         hotCellPositions.Clear();
+        hotVoxelsQueue.Clear();
+        CountArray[0] = 0;
 
         voxelCount = 0;
         isFirstBatchDirty = false;
@@ -144,16 +170,55 @@ public partial class VoxelGasJobs : MonoBehaviour
 
         return new Vector3(x, y, z);
     }
+
     private void Update()
     {
-        if(isSecondBatchDirty)
+        if (VoxelGasPool.CollisionGrid == null)
         {
-            secondBatchJobHandle.Complete();
-
-            isSecondBatchDirty = false;
-            voxelCount += dirtyVoxels.Length;
+            Update_OLD();
         }
+        else
+        {
+            DebugDraw();
+            StartCoroutine(RunExpansion());
+        }
+    }
 
+    System.Collections.IEnumerator RunExpansion()
+    {
+        var voxelGasBakedJob = new VoxelGasBakedJob()
+        {
+            voxelFrontier = voxelFrontier,
+            Chunks = VoxelGasPool.CollisionGrid.Chunks,
+            hotVoxelsQueue = hotVoxelsQueue,
+            voxelPositionArray = voxelPositionArray,
+            voxelSize = voxelSize,
+            minimum = minimum,
+            frontierBounds = new Vector3Int(frontierBounds, frontierBounds, frontierBounds),
+            seed = (uint)(UnityEngine.Random.value * uint.MaxValue),
+            count = CountArray,
+            MaxVolume = maxVoxels,
+            SceneSize = VoxelGasPool.CollisionGrid.Size,
+            FrontierDirectionOffsets = CreateOffsetData(new Vector3Int(frontierBounds, frontierBounds, frontierBounds)),
+            ChunkDirectionOffsets = CreateOffsetData(VoxelGasPool.CollisionGrid.Size),
+        };
+
+        firstBatchJobHandle = voxelGasBakedJob.Schedule();
+        isFirstBatchDirty = true;
+        JobHandle.ScheduleBatchedJobs();
+
+        yield return new WaitForEndOfFrame();
+
+        if (isFirstBatchDirty)
+        {
+            firstBatchJobHandle.Complete();
+            voxelCount = CountArray[0];
+            isFirstBatchDirty = false;
+        }
+    }
+
+    private void DebugDraw()
+    {
         if (debug)
         {
             debugMats.Clear();
@@ -166,6 +231,19 @@ public partial class VoxelGasJobs : MonoBehaviour
 
             Graphics.DrawMeshInstanced(debugMesh, 0, debugMat, debugMats);
         }
+    }
+
+    private void Update_OLD()
+    {
+        if (isSecondBatchDirty)
+        {
+            secondBatchJobHandle.Complete();
+
+            isSecondBatchDirty = false;
+            voxelCount += dirtyVoxels.Length;
+        }
+
+        DebugDraw();
 
         // Stop expanding if maximum number of voxels reached
         if (dirtyVoxels.Length > 0 && voxelCount < maxVoxels)
@@ -176,16 +254,16 @@ public partial class VoxelGasJobs : MonoBehaviour
 
     private void RunFirstJobBatch()
     {
-        var voxelGasJob = new VoxelGasJob(        
-            dirtyVoxels,
-            voxelFrontier,
-            hotCellsQueue.AsParallelWriter(),
-            voxelSize,
-            minimum,
-            frontierBounds,
-            (uint)(UnityEngine.Random.value * uint.MaxValue),
-            queryParameters
-        );
+        var voxelGasJob = new VoxelGasJob(
+                   dirtyVoxels,
+                   voxelFrontier,
+                   hotCellsQueue.AsParallelWriter(),
+                   voxelSize,
+                   minimum,
+                   frontierBounds,
+                   (uint)(UnityEngine.Random.value * uint.MaxValue),
+                   queryParameters
+               );
         var voxelGasJobHandle = voxelGasJob.Schedule(dirtyVoxels.Length, 8);
 
         var spherecastPrepJob = new SpherecastPrepJob(
@@ -197,37 +275,53 @@ public partial class VoxelGasJobs : MonoBehaviour
 
         firstBatchJobHandle = spherecastPrepJob.Schedule(voxelGasJobHandle);
         JobHandle.ScheduleBatchedJobs();
+
         isFirstBatchDirty = true;
     }
 
     private void RunSecondJobBatch()
     {
-        var spherecastJobHandle = OverlapSphereCommand.ScheduleBatch(commandsData.AsArray(), resultsData.AsArray(), 8, 1);
+        if (VoxelGasPool.CollisionGrid == null)
+        {
+            var spherecastJobHandle = OverlapSphereCommand.ScheduleBatch(commandsData.AsArray(), resultsData.AsArray(), 8, 1);
 
-        //var spherecastJobHandle = SpherecastCommand.ScheduleBatch(commandsData.AsDeferredJobArray(), resultsData.AsDeferredJobArray(), 8, spherecastPrepJobHandle);
+            //var spherecastJobHandle = SpherecastCommand.ScheduleBatch(commandsData.AsDeferredJobArray(), resultsData.AsDeferredJobArray(), 8, spherecastPrepJobHandle);
 
-        var processSpherecastResultJob = new ProcessSpherecastResultsJob(
-           commandsData,
-           resultsData,
-           hotCellPositions,
-           dirtyVoxels,
-           voxelPositionArray,
-           voxelFrontier,
-           voxelCount,
-           voxelSize,
-           frontierBounds,
-           maxVoxels,
-           minimum
-       );
+            var processSpherecastResultJob = new ProcessSpherecastResultsJob(
+               commandsData,
+               resultsData,
+               hotCellPositions,
+               dirtyVoxels,
+               voxelPositionArray,
+               voxelFrontier,
+               voxelCount,
+               voxelSize,
+               frontierBounds,
+               maxVoxels,
+               minimum
+           );
 
-        secondBatchJobHandle = processSpherecastResultJob.Schedule(spherecastJobHandle);
-        JobHandle.ScheduleBatchedJobs();
-        isSecondBatchDirty = true;
+            secondBatchJobHandle = processSpherecastResultJob.Schedule(spherecastJobHandle);
+            JobHandle.ScheduleBatchedJobs();
+            isSecondBatchDirty = true;
+        }
+        else
+        {
+            voxelCount = CountArray[0];
+        }
     }
 
     private void LateUpdate()
     {
-        if(isFirstBatchDirty)
+        if (VoxelGasPool.CollisionGrid == null)
+        {
+            LateUpdateOld();
+        }
+    }
+
+    private void LateUpdateOld()
+    {
+        if (isFirstBatchDirty)
         {
             firstBatchJobHandle.Complete();
             isFirstBatchDirty = false;
@@ -248,6 +342,8 @@ public partial class VoxelGasJobs : MonoBehaviour
         resultsData.Dispose();
         hotCellPositions.Dispose();
         voxelPositionArray.Dispose();
+        hotVoxelsQueue.Dispose();
+        CountArray.Dispose();
 
         voxelPositionBuffer?.Dispose();
         voxelSizeBuffer?.Dispose();
@@ -261,6 +357,7 @@ public partial class VoxelGasJobs : MonoBehaviour
         {             
             voxelPositionArray[voxelCount] = position;
             voxelCount++;
+            CountArray[0]++;
         }
     }
 

@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 1625.874, g: 1808.8611, b: 2260.5989, a: 1}
+  m_IndirectSpecularColor: {r: 1625.8846, g: 1808.8292, b: 2260.6191, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -437,57 +437,6 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1771304615123796394, guid: 4751770e0dc8c1149aa554360ae6087b, type: 3}
   m_PrefabInstance: {fileID: 50509531}
   m_PrefabAsset: {fileID: 0}
---- !u!1 &68748102
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 68748104}
-  - component: {fileID: 68748103}
-  m_Layer: 0
-  m_Name: VoxelizeSceneTest
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &68748103
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68748102}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fb9e87d9327823846bfa22acc8bad87c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  m_Bounds:
-    m_Center: {x: 23.999996, y: 7.9975004, z: 0}
-    m_Extent: {x: 41.900005, y: 9.4025, z: 18.4}
-  m_VoxelSize: 0.1
-  m_ObstacleMask:
-    serializedVersion: 2
-    m_Bits: 1
---- !u!4 &68748104
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68748102}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 9
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &78737993
 GameObject:
   m_ObjectHideFlags: 0
@@ -5556,6 +5505,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_PrewarmCount: 4
   m_Prefab: {fileID: 5066850017463963212, guid: fcef42aef7deb89478e5b960ba385f4e, type: 3}
+  LoadGrid: 1
+  m_VoxelSize: 0.25
+  m_LayerMask:
+    serializedVersion: 2
+    m_Bits: 1
 --- !u!4 &447757612
 Transform:
   m_ObjectHideFlags: 0

@@ -515,6 +515,7 @@ public partial class VoxelGasJobs
                     }
                 }
             }
+            directions.Dispose();
         }
 
         bool TryGetNeighborInDirection(VoxelInfo current, int directionIndex, out VoxelInfo neighbor)

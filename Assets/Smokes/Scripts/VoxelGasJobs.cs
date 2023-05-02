@@ -186,6 +186,9 @@ public partial class VoxelGasJobs : MonoBehaviour
 
     System.Collections.IEnumerator RunExpansion()
     {
+        if (!firstBatchJobHandle.IsCompleted) //this is here because if you pause the editor the yield instruction below never completes that frame
+            firstBatchJobHandle.Complete();
+
         var voxelGasBakedJob = new VoxelGasBakedJob()
         {
             voxelFrontier = voxelFrontier,
@@ -203,18 +206,15 @@ public partial class VoxelGasJobs : MonoBehaviour
             ChunkDirectionOffsets = CreateOffsetData(VoxelGasPool.CollisionGrid.Size),
         };
 
+
         firstBatchJobHandle = voxelGasBakedJob.Schedule();
-        isFirstBatchDirty = true;
         JobHandle.ScheduleBatchedJobs();
 
         yield return new WaitForEndOfFrame();
 
-        if (isFirstBatchDirty)
-        {
-            firstBatchJobHandle.Complete();
-            voxelCount = CountArray[0];
-            isFirstBatchDirty = false;
-        }
+        firstBatchJobHandle.Complete();
+        voxelCount = CountArray[0];
+        isFirstBatchDirty = false;
     }
 
     private void DebugDraw()

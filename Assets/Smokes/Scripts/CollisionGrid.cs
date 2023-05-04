@@ -217,9 +217,9 @@ public class CollisionGrid : System.IDisposable
     }
 
     
-    public bool TryGetVoxelInfo(Vector3 position, out VoxelGasJobs.VoxelInfo voxelInfo)
+    public bool TryGetVoxelInfo(Vector3 position, out VoxelInfo voxelInfo)
     {
-        voxelInfo = new VoxelGasJobs.VoxelInfo();
+        voxelInfo = new VoxelInfo();
         if (!m_Bounds.Contains(position))
         {
             return false;
@@ -246,6 +246,14 @@ public class CollisionGrid : System.IDisposable
         return true;
     }
 
+}
+
+public struct VoxelInfo
+{
+    public Vector3Int ChunkID;
+    public int ChunkIndex;
+    public Vector3Int VoxelID;
+    public int VoxelIndex;
 }
 
 //A collision chunk is 8x8x8 and 512 voxels total

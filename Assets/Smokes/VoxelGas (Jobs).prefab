@@ -132,14 +132,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 322c68902f5cf534dab2b246f0f23591, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxVoxels: 4096
+  maxVoxels: 6144
   frontierBounds: 512
   voxelSize: 0.25
   obstacleLayerMask:
     serializedVersion: 2
     m_Bits: 1
   smokeGraph: {fileID: 8401210461593007902}
-  debug: 1
+  debug: 0
   debugMesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
   debugMat: {fileID: 2100000, guid: a6dcbe608bcd4564d81dd0ba73906e9c, type: 2}
 --- !u!2083052967 &8401210461593007902
@@ -150,7 +150,7 @@ VisualEffect:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6248916206078876734}
   m_Enabled: 1
-  m_Asset: {fileID: 0}
+  m_Asset: {fileID: 8926484042661614526, guid: 51c46b91d5a013d46839fb0ed204f77e, type: 3}
   m_InitialEventName: OnPlay
   m_InitialEventNameOverriden: 0
   m_StartSeed: 0

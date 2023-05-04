@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine.VFX;
 using Unity.Collections;
 using Unity.Jobs;
+using static VoxelGasJobs;
+using Unity.Collections.LowLevel.Unsafe;
 
 public partial class VoxelGasJobs : MonoBehaviour
 {
@@ -22,14 +24,17 @@ public partial class VoxelGasJobs : MonoBehaviour
     NativeBitArray voxelFrontier;
     NativeList<Vector3Int> dirtyVoxels;
     NativeQueue<RaycastGuideData> hotCellsQueue;
-    NativeQueue<VoxelInfo> hotVoxelsQueue;
+    NativeQueue<VoxelFrontierInfo> hotVoxelsQueue;
     NativeList<Vector3Int> hotCellPositions;
     NativeList<OverlapSphereCommand> commandsData;
     NativeList<ColliderHit> resultsData;
     NativeArray<Vector3> voxelPositionArray;
-    NativeArray<int> CountArray; 
+    NativeArray<VoxelMetaData> voxelMetaData;
+    NativeArray<int> countArray;
+    NativeArray<int> waveCount;
 
     GraphicsBuffer voxelPositionBuffer;
+    GraphicsBuffer voxelMetaDataBuffer;
     GraphicsBuffer voxelSizeBuffer;
 
     JobHandle secondBatchJobHandle;
@@ -65,17 +70,21 @@ public partial class VoxelGasJobs : MonoBehaviour
         voxelFrontier = new NativeBitArray(frontierBounds * frontierBounds * frontierBounds, Allocator.Persistent, NativeArrayOptions.ClearMemory);
         dirtyVoxels = new NativeList<Vector3Int>(frontierBounds, Allocator.Persistent);
         hotCellsQueue = new NativeQueue<RaycastGuideData>(Allocator.Persistent);
-        hotVoxelsQueue = new NativeQueue<VoxelInfo>(Allocator.Persistent);
+        hotVoxelsQueue = new NativeQueue<VoxelFrontierInfo>(Allocator.Persistent);
         voxelPositionArray = new NativeArray<Vector3>(maxVoxels, Allocator.Persistent);
         hotCellPositions = new NativeList<Vector3Int>(Allocator.Persistent);
         commandsData = new NativeList<OverlapSphereCommand>(Allocator.Persistent);
         resultsData = new NativeList<ColliderHit>(Allocator.Persistent);
-        CountArray = new NativeArray<int>(new int[] { 0 }, Allocator.Persistent);
+        countArray = new NativeArray<int>(new int[] { 0 }, Allocator.Persistent);
+        voxelMetaData = new NativeArray<VoxelMetaData>(maxVoxels, Allocator.Persistent);
+        waveCount = new NativeArray<int>(new int[] { 0 }, Allocator.Persistent);
 
         voxelPositionBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, maxVoxels, 12);
         voxelSizeBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, maxVoxels, 4);
         voxelPositionBuffer.SetData(voxelPositionArray);
-
+        voxelMetaDataBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, maxVoxels, 16);
+        voxelMetaDataBuffer.SetData(voxelMetaData);
+        
 
         //calculate the minimum position offset
         float halfExtent = ((float)frontierBounds / 2f) * voxelSize;
@@ -84,8 +93,12 @@ public partial class VoxelGasJobs : MonoBehaviour
         //calculate the center voxel of the voxelFrontier
         var halfExtentInt = Mathf.CeilToInt(frontierBounds / 2);
         center = new Vector3Int(halfExtentInt, halfExtentInt, halfExtentInt);
+        
+        //Temporary solution to help prevent issues with crevices
+        //A better solution would be to supply the grenade with a safe position to expand from
+        //this can be done by keeping track of the last empty voxel our grenade occupied.
+        center.y += 1; 
 
-        center.y += 1;
         isAllocated = true;
     }
 
@@ -106,8 +119,9 @@ public partial class VoxelGasJobs : MonoBehaviour
 
         if (VoxelGasPool.CollisionGrid != null && VoxelGasPool.CollisionGrid.TryGetVoxelInfo(wp, out var info))
         {
-            info.FrontierIndex = voxelIndex;
-            info.FrontierID = center;
+            VoxelFrontierInfo frontierInfo = info;
+            frontierInfo.FrontierIndex = voxelIndex;
+            frontierInfo.FrontierID = center;
 
             var val = VoxelGasPool.CollisionGrid.Chunks[info.ChunkIndex].GetBit(info.VoxelIndex);
             /*
@@ -117,7 +131,13 @@ public partial class VoxelGasJobs : MonoBehaviour
             Debug.Log("VoxelID: " + info.VoxelID);
             Debug.Log("VoxelIndex: " + info.VoxelIndex);
             */
-            hotVoxelsQueue.Enqueue(info);
+            voxelMetaData[voxelCount] = new VoxelMetaData()
+            {
+                waveIndex = 0,
+                position = wp,
+            };
+            waveCount[0]++;
+            hotVoxelsQueue.Enqueue(frontierInfo);
         }
 
         GetVoxel(wp);
@@ -136,11 +156,20 @@ public partial class VoxelGasJobs : MonoBehaviour
         resultsData.Clear();
         hotCellPositions.Clear();
         hotVoxelsQueue.Clear();
-        CountArray[0] = 0;
+        ClearNativeArray(voxelMetaData);
+        ClearNativeArray(voxelPositionArray);
+        waveCount[0] = 0;
+        countArray[0] = 0;
 
         voxelCount = 0;
         isFirstBatchDirty = false;
         isSecondBatchDirty = false;
+
+        if (smokeGraph != null && smokeGraph.visualEffectAsset != null)
+        {
+            smokeGraph.Stop();
+            smokeGraph.enabled = false;
+        }
     }
 
     int GetVoxelIndex(Vector3Int position)
@@ -185,9 +214,8 @@ public partial class VoxelGasJobs : MonoBehaviour
     }
 
     System.Collections.IEnumerator RunExpansion()
-    {
-        if (!firstBatchJobHandle.IsCompleted) //this is here because if you pause the editor the yield instruction below never completes that frame
-            firstBatchJobHandle.Complete();
+    { 
+        firstBatchJobHandle.Complete(); //this is here because if you pause the editor the yield instruction below never completes that frame
 
         var voxelGasBakedJob = new VoxelGasBakedJob()
         {
@@ -195,11 +223,13 @@ public partial class VoxelGasJobs : MonoBehaviour
             Chunks = VoxelGasPool.CollisionGrid.Chunks,
             hotVoxelsQueue = hotVoxelsQueue,
             voxelPositionArray = voxelPositionArray,
+            voxelMetaData = voxelMetaData,
             voxelSize = voxelSize,
+            waveCount = waveCount,
             minimum = minimum,
             frontierBounds = new Vector3Int(frontierBounds, frontierBounds, frontierBounds),
             seed = (uint)(UnityEngine.Random.value * uint.MaxValue),
-            count = CountArray,
+            voxelCount = countArray,
             MaxVolume = maxVoxels,
             SceneSize = VoxelGasPool.CollisionGrid.Size,
             FrontierDirectionOffsets = CreateOffsetData(new Vector3Int(frontierBounds, frontierBounds, frontierBounds)),
@@ -213,7 +243,18 @@ public partial class VoxelGasJobs : MonoBehaviour
         yield return new WaitForEndOfFrame();
 
         firstBatchJobHandle.Complete();
-        voxelCount = CountArray[0];
+        voxelCount = countArray[0];
+
+        if(smokeGraph != null && smokeGraph.visualEffectAsset != null)
+        {
+            smokeGraph.enabled = true;
+            smokeGraph.SetInt("waveCount", waveCount[0]);
+            smokeGraph.SetInt("voxelCount", countArray[0]);
+            voxelMetaDataBuffer.SetData(voxelMetaData);
+            smokeGraph.SetGraphicsBuffer("voxelMetaData", voxelMetaDataBuffer);
+            smokeGraph.SetFloat("voxelSize", voxelSize);
+            smokeGraph.Play();
+        }
         isFirstBatchDirty = false;
     }
 
@@ -307,7 +348,7 @@ public partial class VoxelGasJobs : MonoBehaviour
         }
         else
         {
-            voxelCount = CountArray[0];
+            voxelCount = countArray[0];
         }
     }
 
@@ -343,10 +384,13 @@ public partial class VoxelGasJobs : MonoBehaviour
         hotCellPositions.Dispose();
         voxelPositionArray.Dispose();
         hotVoxelsQueue.Dispose();
-        CountArray.Dispose();
+        countArray.Dispose();
+        voxelMetaData.Dispose();
+        waveCount.Dispose();
 
         voxelPositionBuffer?.Dispose();
         voxelSizeBuffer?.Dispose();
+        voxelMetaDataBuffer?.Dispose();
 
         isAllocated = false;
     }
@@ -357,7 +401,7 @@ public partial class VoxelGasJobs : MonoBehaviour
         {             
             voxelPositionArray[voxelCount] = position;
             voxelCount++;
-            CountArray[0]++;
+            countArray[0]++;
         }
     }
 
@@ -367,5 +411,11 @@ public partial class VoxelGasJobs : MonoBehaviour
         public Vector3 origin;
         public Vector3 direction;
         public float voxelSize;
+    }
+
+    unsafe void ClearNativeArray<T>(NativeArray<T> array) where T: struct
+    {
+        void* ptr = array.GetUnsafePtr();
+        UnsafeUtility.MemClear(ptr, array.Length);
     }
 }

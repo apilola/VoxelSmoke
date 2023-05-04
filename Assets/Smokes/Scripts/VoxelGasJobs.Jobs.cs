@@ -1,7 +1,10 @@
-﻿using Unity.Burst;
+﻿using System.Runtime.InteropServices;
+using Unity.Burst;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
+using UnityEngine.VFX;
+
 public partial class VoxelGasJobs
 {
     [BurstCompile()]
@@ -336,7 +339,15 @@ public partial class VoxelGasJobs
         }
     }
 
-    public struct VoxelInfo
+    [StructLayout(LayoutKind.Sequential, Size = 16)]
+    [VFXType(VFXTypeAttribute.Usage.GraphicsBuffer)]
+    public struct VoxelMetaData
+    {
+        public int waveIndex;
+        public Vector3 position;
+    }
+
+    public struct VoxelFrontierInfo
     {
         public Vector3Int FrontierID;
         public int FrontierIndex;
@@ -344,6 +355,29 @@ public partial class VoxelGasJobs
         public int ChunkIndex;
         public Vector3Int VoxelID;
         public int VoxelIndex;
+        public int waveIndex;
+
+        public static implicit operator VoxelInfo(VoxelFrontierInfo info) 
+        {
+            return new VoxelInfo()
+            {
+                ChunkIndex = info.ChunkIndex,
+                ChunkID = info.ChunkID,
+                VoxelID = info.VoxelID,
+                VoxelIndex = info.VoxelIndex,
+            };
+        }
+
+        public static implicit operator VoxelFrontierInfo(VoxelInfo info)
+        {
+            return new VoxelFrontierInfo()
+            {
+                ChunkIndex = info.ChunkIndex,
+                ChunkID = info.ChunkID,
+                VoxelID = info.VoxelID,
+                VoxelIndex = info.VoxelIndex,
+            };
+        }
     }
 
     public static readonly Vector3Int ChunkSize = new Vector3Int(8, 8, 8);
@@ -454,15 +488,16 @@ public partial class VoxelGasJobs
         public NativeBitArray voxelFrontier;
         [ReadOnly]
         public NativeArray<Chunk> Chunks;
-        public NativeQueue<VoxelInfo> hotVoxelsQueue;
+        public NativeQueue<VoxelFrontierInfo> hotVoxelsQueue;
         public NativeArray<Vector3> voxelPositionArray;
+        public NativeArray<VoxelMetaData> voxelMetaData;
+        public NativeArray<int> waveCount;
+        public NativeArray<int> voxelCount;
 
         public float voxelSize;
         public Vector3 minimum;
         public Vector3Int frontierBounds;
         public uint seed;
-
-        public NativeArray<int> count;
         public int MaxVolume;
 
         public Vector3Int SceneSize;
@@ -490,11 +525,11 @@ public partial class VoxelGasJobs
             directions[11] = 5; // Back
             directions[12] = 5; //back
 
-            while (count[0] < MaxVolume && hotVoxelsQueue.TryDequeue(out var current))
+            while (voxelCount[0] < MaxVolume && hotVoxelsQueue.TryDequeue(out var current))
             {
                 ShuffleArray(directions, rnd);
                 int numNeighborsToExpandTo = rnd.NextInt(3, 6);
-                for (int j = 0; j < numNeighborsToExpandTo && count[0] < MaxVolume; j++)
+                for (int j = 0; j < numNeighborsToExpandTo && voxelCount[0] < MaxVolume; j++)
                 {
                     int directionIndex = directions[j];
                     Vector3Int direction = Directions[directionIndex];
@@ -505,8 +540,17 @@ public partial class VoxelGasJobs
                         {
                             hotVoxelsQueue.Enqueue(neighbor);
                         //we might be able to speed this up by keeping track of the voxel's position in voxelInfo instead of calculating it here.
-                            voxelPositionArray[count[0]] = minimum + (Vector3) neighbor.FrontierID * voxelSize;
-                            count[0]++;
+                            var pos = voxelPositionArray[voxelCount[0]] = minimum + (Vector3) neighbor.FrontierID * voxelSize;
+                            voxelMetaData[voxelCount[0]] = new VoxelMetaData()
+                            {
+                                waveIndex = neighbor.waveIndex,
+                                position = pos,                                
+                            };
+                            voxelCount[0]++;
+                            if (waveCount[0] - 1 < neighbor.waveIndex)
+                            {
+                                waveCount[0] = neighbor.waveIndex + 1;
+                            }
                         }
                         else
                         {
@@ -518,7 +562,7 @@ public partial class VoxelGasJobs
             directions.Dispose();
         }
 
-        bool TryGetNeighborInDirection(VoxelInfo current, int directionIndex, out VoxelInfo neighbor)
+        bool TryGetNeighborInDirection(VoxelFrontierInfo current, int directionIndex, out VoxelFrontierInfo neighbor)
         {
             Vector3Int direction = Directions[directionIndex];
             neighbor = current;
@@ -584,14 +628,14 @@ public partial class VoxelGasJobs
 
                 //I'm lazy so I'll just throw out our current index and calculate a new one
                 neighbor.VoxelIndex = CalcVolumeIndex(neighbor.VoxelID, ChunkSize);
-                return true;
             }
             else
             {
                 //update our voxel index
                 neighbor.VoxelIndex += VoxelDirectionOffset[directionIndex];
-                return true;
             }
+            neighbor.waveIndex++;
+            return true;
         }
 
         bool IsNotInVoxelBounds(Vector3Int id, Vector3Int size)

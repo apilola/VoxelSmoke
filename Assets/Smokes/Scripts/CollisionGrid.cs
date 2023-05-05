@@ -80,7 +80,7 @@ public class CollisionGrid : System.IDisposable
             {
                 if (!startingBoundsFound && GetChildBounds(rootObjects[i], out bounds))
                 {
-                    startingBoundsFound = true;
+                    startingBoundsFound = true; 
                 }
                 else if (GetChildBounds(rootObjects[i], out var aabb))
                 {

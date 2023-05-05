@@ -37,7 +37,6 @@ public class VoxelGasLauncher : MonoBehaviour
         var rb = gas.GetComponent<Rigidbody>();
         rb.isKinematic = false;
         rb.AddForce(ray.direction * m_LaunchVelocity);
-
         yield return new WaitForSeconds(2);
 
         rb.isKinematic = true;

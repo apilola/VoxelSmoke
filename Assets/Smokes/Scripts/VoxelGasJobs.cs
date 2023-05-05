@@ -22,12 +22,8 @@ public partial class VoxelGasJobs : MonoBehaviour
     List<Matrix4x4> debugMats = new List<Matrix4x4>();
 
     NativeBitArray voxelFrontier;
-    NativeList<Vector3Int> dirtyVoxels;
-    NativeQueue<RaycastGuideData> hotCellsQueue;
     NativeQueue<VoxelFrontierInfo> hotVoxelsQueue;
     NativeList<Vector3Int> hotCellPositions;
-    NativeList<OverlapSphereCommand> commandsData;
-    NativeList<ColliderHit> resultsData;
     NativeArray<Vector3> voxelPositionArray;
     NativeArray<VoxelMetaData> voxelMetaData;
     NativeArray<int> countArray;
@@ -68,13 +64,9 @@ public partial class VoxelGasJobs : MonoBehaviour
 
         //initialize job data structures
         voxelFrontier = new NativeBitArray(frontierBounds * frontierBounds * frontierBounds, Allocator.Persistent, NativeArrayOptions.ClearMemory);
-        dirtyVoxels = new NativeList<Vector3Int>(frontierBounds, Allocator.Persistent);
-        hotCellsQueue = new NativeQueue<RaycastGuideData>(Allocator.Persistent);
         hotVoxelsQueue = new NativeQueue<VoxelFrontierInfo>(Allocator.Persistent);
         voxelPositionArray = new NativeArray<Vector3>(maxVoxels, Allocator.Persistent);
         hotCellPositions = new NativeList<Vector3Int>(Allocator.Persistent);
-        commandsData = new NativeList<OverlapSphereCommand>(Allocator.Persistent);
-        resultsData = new NativeList<ColliderHit>(Allocator.Persistent);
         countArray = new NativeArray<int>(new int[] { 0 }, Allocator.Persistent);
         voxelMetaData = new NativeArray<VoxelMetaData>(maxVoxels, Allocator.Persistent);
         waveCount = new NativeArray<int>(new int[] { 0 }, Allocator.Persistent);
@@ -114,7 +106,6 @@ public partial class VoxelGasJobs : MonoBehaviour
 
         // Add a starting voxel at the center of the volume
         var voxelIndex = GetVoxelIndex(center);
-        dirtyVoxels.Add(center);
         var wp = GetVoxelWorldPosition(center);
 
         if (VoxelGasPool.CollisionGrid != null && VoxelGasPool.CollisionGrid.TryGetVoxelInfo(wp, out var info))
@@ -124,13 +115,6 @@ public partial class VoxelGasJobs : MonoBehaviour
             frontierInfo.FrontierID = center;
 
             var val = VoxelGasPool.CollisionGrid.Chunks[info.ChunkIndex].GetBit(info.VoxelIndex);
-            /*
-            Debug.Log($"VoxelInfo: has collision {val}");
-            Debug.Log("ChunkID: " + info.ChunkID);
-            Debug.Log("ChunkIndex: " + info.ChunkIndex);
-            Debug.Log("VoxelID: " + info.VoxelID);
-            Debug.Log("VoxelIndex: " + info.VoxelIndex);
-            */
             voxelMetaData[voxelCount] = new VoxelMetaData()
             {
                 waveIndex = 0,
@@ -150,10 +134,6 @@ public partial class VoxelGasJobs : MonoBehaviour
         secondBatchJobHandle.Complete();
 
         voxelFrontier.Clear();
-        dirtyVoxels.Clear();
-        hotCellsQueue.Clear();
-        commandsData.Clear();
-        resultsData.Clear();
         hotCellPositions.Clear();
         hotVoxelsQueue.Clear();
         ClearNativeArray(voxelMetaData);
@@ -202,15 +182,8 @@ public partial class VoxelGasJobs : MonoBehaviour
 
     private void Update()
     {
-        if (VoxelGasPool.CollisionGrid == null)
-        {
-            Update_OLD();
-        }
-        else
-        {
-            DebugDraw();
-            StartCoroutine(RunExpansion());
-        }
+        DebugDraw();
+        StartCoroutine(RunExpansion());
     }
 
     System.Collections.IEnumerator RunExpansion()
@@ -274,113 +247,12 @@ public partial class VoxelGasJobs : MonoBehaviour
         }
     }
 
-    private void Update_OLD()
-    {
-        if (isSecondBatchDirty)
-        {
-            secondBatchJobHandle.Complete();
-
-            isSecondBatchDirty = false;
-            voxelCount += dirtyVoxels.Length;
-        }
-
-        DebugDraw();
-
-        // Stop expanding if maximum number of voxels reached
-        if (dirtyVoxels.Length > 0 && voxelCount < maxVoxels)
-        {
-            RunFirstJobBatch();
-        }
-    }
-
-    private void RunFirstJobBatch()
-    {
-        var voxelGasJob = new VoxelGasJob(
-                   dirtyVoxels,
-                   voxelFrontier,
-                   hotCellsQueue.AsParallelWriter(),
-                   voxelSize,
-                   minimum,
-                   frontierBounds,
-                   (uint)(UnityEngine.Random.value * uint.MaxValue),
-                   queryParameters
-               );
-        var voxelGasJobHandle = voxelGasJob.Schedule(dirtyVoxels.Length, 8);
-
-        var spherecastPrepJob = new SpherecastPrepJob(
-            hotCellsQueue,
-            commandsData,
-            resultsData,
-            hotCellPositions,
-            queryParameters);
-
-        firstBatchJobHandle = spherecastPrepJob.Schedule(voxelGasJobHandle);
-        JobHandle.ScheduleBatchedJobs();
-
-        isFirstBatchDirty = true;
-    }
-
-    private void RunSecondJobBatch()
-    {
-        if (VoxelGasPool.CollisionGrid == null)
-        {
-            var spherecastJobHandle = OverlapSphereCommand.ScheduleBatch(commandsData.AsArray(), resultsData.AsArray(), 8, 1);
-
-            //var spherecastJobHandle = SpherecastCommand.ScheduleBatch(commandsData.AsDeferredJobArray(), resultsData.AsDeferredJobArray(), 8, spherecastPrepJobHandle);
-
-            var processSpherecastResultJob = new ProcessSpherecastResultsJob(
-               commandsData,
-               resultsData,
-               hotCellPositions,
-               dirtyVoxels,
-               voxelPositionArray,
-               voxelFrontier,
-               voxelCount,
-               voxelSize,
-               frontierBounds,
-               maxVoxels,
-               minimum
-           );
-
-            secondBatchJobHandle = processSpherecastResultJob.Schedule(spherecastJobHandle);
-            JobHandle.ScheduleBatchedJobs();
-            isSecondBatchDirty = true;
-        }
-        else
-        {
-            voxelCount = countArray[0];
-        }
-    }
-
-    private void LateUpdate()
-    {
-        if (VoxelGasPool.CollisionGrid == null)
-        {
-            LateUpdateOld();
-        }
-    }
-
-    private void LateUpdateOld()
-    {
-        if (isFirstBatchDirty)
-        {
-            firstBatchJobHandle.Complete();
-            isFirstBatchDirty = false;
-
-            RunSecondJobBatch();
-        }
-    }
-
     private void OnDestroy()
     {
         firstBatchJobHandle.Complete();
         secondBatchJobHandle.Complete();
 
         voxelFrontier.Dispose();
-        dirtyVoxels.Dispose();
-        hotCellsQueue.Dispose();
-        commandsData.Dispose();
-        resultsData.Dispose();
         hotCellPositions.Dispose();
         voxelPositionArray.Dispose();
         hotVoxelsQueue.Dispose();

@@ -123,7 +123,7 @@ public partial class VoxelGasJobs : MonoBehaviour
             waveCount[0]++;
             hotVoxelsQueue.Enqueue(frontierInfo);
         }
-
+        
         GetVoxel(wp);
         SetVoxelVisited(voxelIndex);
     }

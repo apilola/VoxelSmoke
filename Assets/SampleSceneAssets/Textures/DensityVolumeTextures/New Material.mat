@@ -102,7 +102,19 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _SampleTexture3D_2cb9b6ab23ec4941ab020c3967fac7b4_Texture_1_Texture3D:
+        m_Texture: {fileID: 11700000, guid: 836429d92e1b49443b7743362fdeb1fe, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _SampleTexture3D_3721f0a7d2f544fbabcb0438612e43e8_Texture_1_Texture3D:
+        m_Texture: {fileID: 11700000, guid: 836429d92e1b49443b7743362fdeb1fe, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture3D_3f14395d8e234bfeac0f1534864ae62c_Texture_1_Texture3D:
+        m_Texture: {fileID: 11700000, guid: 571d8ae122d98db47851c6b14cb99f3c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _SampleTexture3D_45d5379d2178447b92df3ae3f2f1a23a_Texture_1_Texture3D:
         m_Texture: {fileID: 11700000, guid: 836429d92e1b49443b7743362fdeb1fe, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
@@ -165,6 +177,9 @@ Material:
     - _Anisotropy: 0
     - _BlendMode: 0
     - _CoatMask: 0
+    - _ColorNoiseScale: 0.03
+    - _ColorOctiveScale2: 0.5
+    - _ColorOctiveStrength: 0.35
     - _ConservativeDepthOffsetEnable: 0
     - _CullMode: 2
     - _CullModeForward: 2
@@ -208,6 +223,9 @@ Material:
     - _Metallic: 0
     - _MetallicRemapMax: 1
     - _MetallicRemapMin: 0
+    - _NoiseScale: 2.38
+    - _NoiseSpeed: -0.05
+    - _NoiseStrength: 0.78
     - _NormalMapSpace: 0
     - _NormalScale: 1
     - _ObjectSpaceUVMapping: 0
@@ -218,6 +236,7 @@ Material:
     - _PPDMinSamples: 5
     - _PPDPrimitiveLength: 1
     - _PPDPrimitiveWidth: 1
+    - _Power: 7.32
     - _RayTracing: 0
     - _ReceivesSSR: 1
     - _ReceivesSSRTransparent: 0
@@ -258,6 +277,7 @@ Material:
     - _UVEmissive: 0
     - _UseEmissiveIntensity: 0
     - _UseShadowThreshold: 0
+    - _VolumePower: 3.97
     - _ZTestDepthEqualForOpaque: 3
     - _ZTestGBuffer: 4
     - _ZTestTransparent: 4

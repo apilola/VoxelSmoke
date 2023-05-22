@@ -20,6 +20,7 @@ public partial class VoxelGasJobs : MonoBehaviour
     public Mesh debugMesh;
     public Material debugMat;
     List<Matrix4x4> debugMats = new List<Matrix4x4>();
+    Texture3D volumeTexture;
 
     NativeBitArray voxelFrontier;
     NativeQueue<VoxelFrontierInfo> hotVoxelsQueue;
@@ -59,6 +60,39 @@ public partial class VoxelGasJobs : MonoBehaviour
         {
             return;
         }
+        
+            volumeTexture = new Texture3D(frontierBounds,
+                                            frontierBounds,
+                                            frontierBounds,
+                                            UnityEngine.Experimental.Rendering.GraphicsFormat.r, //Choo
+                                            UnityEngine.Experimental.Rendering.TextureCreationFlags.DontInitializePixels                                            
+                                            );
+
+                volumeTexture.SetPixelData<32>();
+
+        
+        RenderTextureDescriptor rtd = new RenderTextureDescriptor()
+        {
+            dimension = UnityEngine.Rendering.TextureDimension.Tex3D,
+            height = frontierBounds,
+            width = frontierBounds,
+            volumeDepth = frontierBounds,
+            enableRandomWrite = true,
+            graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16_SInt
+        };
+        var tex = new RenderTexture(rtd);
+        tex.
+        ComputeShader s;
+
+        var k = s.FindKernel("s");
+        int id = Shader.PropertyToID("P");
+        s.SetTexture(k, "S", rtd);
+        ComputeBuffer cb = new ComputeBuffer(int count, ComputeBufferType.Structured, ComputeBufferMode.SubUpdates)
+        s.Dispatch(k, 0, 0, 0);
+
+        RenderTexture t = new RenderTexture(rtd);
+        t.Create();
+        
 
         queryParameters = new QueryParameters(obstacleLayerMask, true, QueryTriggerInteraction.Ignore, false);
 

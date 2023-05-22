@@ -7,6 +7,11 @@ using UnityEngine.VFX;
 
 public partial class VoxelGasJobs
 {
+    public struct VoxelData
+    {
+        public ushort waveIndex;
+    }
+
     [StructLayout(LayoutKind.Sequential, Size = 16)]
     [VFXType(VFXTypeAttribute.Usage.GraphicsBuffer)]
     public struct VoxelMetaData

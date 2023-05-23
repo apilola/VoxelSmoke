@@ -4980,7 +4980,7 @@ MonoBehaviour:
     invertFade: 0
     distanceFadeStart: 46.8
     distanceFadeEnd: 60
-    textureOffset: {x: -0, y: -1.5062288, z: -0}
+    textureOffset: {x: -0, y: -1734.2059, z: -0}
     falloffMode: 0
     maskMode: 1
     materialMask: {fileID: 2100000, guid: 044d5c08b771ffb4ebe3599799412e1a, type: 2}
@@ -18748,7 +18748,7 @@ MonoBehaviour:
     invertFade: 0
     distanceFadeStart: 46.8
     distanceFadeEnd: 60
-    textureOffset: {x: -0, y: -1.5062288, z: -0}
+    textureOffset: {x: -0, y: -1734.2059, z: -0}
     falloffMode: 0
     maskMode: 1
     materialMask: {fileID: 2100000, guid: 044d5c08b771ffb4ebe3599799412e1a, type: 2}
@@ -20965,7 +20965,7 @@ MonoBehaviour:
     invertFade: 0
     distanceFadeStart: 50
     distanceFadeEnd: 60
-    textureOffset: {x: -0, y: -1.5062288, z: -0}
+    textureOffset: {x: -0, y: -1734.2059, z: -0}
     falloffMode: 1
     maskMode: 0
     materialMask: {fileID: 0}

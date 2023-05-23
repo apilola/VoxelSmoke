@@ -61,15 +61,16 @@ public partial class VoxelGasJobs : MonoBehaviour
             return;
         }
         
-            volumeTexture = new Texture3D(frontierBounds,
+        /*
+        volumeTexture = new Texture3D(frontierBounds,
                                             frontierBounds,
                                             frontierBounds,
-                                            UnityEngine.Experimental.Rendering.GraphicsFormat.r, //Choo
+                                            UnityEngine.Experimental.Rendering.GraphicsFormat.R16_UInt, //Choo
                                             UnityEngine.Experimental.Rendering.TextureCreationFlags.DontInitializePixels                                            
                                             );
 
-                volumeTexture.SetPixelData<32>();
-
+        volumeTexture.SetPixelData<ushort>(voxelFrontier);
+        */
         
         RenderTextureDescriptor rtd = new RenderTextureDescriptor()
         {
@@ -80,6 +81,7 @@ public partial class VoxelGasJobs : MonoBehaviour
             enableRandomWrite = true,
             graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16_SInt
         };
+        /*
         var tex = new RenderTexture(rtd);
         tex.
         ComputeShader s;
@@ -92,7 +94,7 @@ public partial class VoxelGasJobs : MonoBehaviour
 
         RenderTexture t = new RenderTexture(rtd);
         t.Create();
-        
+        */
 
         queryParameters = new QueryParameters(obstacleLayerMask, true, QueryTriggerInteraction.Ignore, false);
 

@@ -65,7 +65,7 @@ public partial class VoxelGasJobs : MonoBehaviour
         volumeTexture = new Texture3D(frontierBounds,
                                             frontierBounds,
                                             frontierBounds,
-                                            UnityEngine.Experimental.Rendering.GraphicsFormat.R16_UInt, //Choo
+                                            UnityEngine.Experimental.Rendering.GraphicsFormat.R16_UInt, //Choose r16 because max wave count could be around 90
                                             UnityEngine.Experimental.Rendering.TextureCreationFlags.DontInitializePixels                                            
                                             );
 
@@ -79,7 +79,7 @@ public partial class VoxelGasJobs : MonoBehaviour
             width = frontierBounds,
             volumeDepth = frontierBounds,
             enableRandomWrite = true,
-            graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R16G16_SInt
+            graphicsFormat = UnityEngine.Experimental.Rendering.GraphicsFormat.R8_UNorm // choose r8 cause its a floating point value and we don't have much accuracy anyway.
         };
         /*
         var tex = new RenderTexture(rtd);

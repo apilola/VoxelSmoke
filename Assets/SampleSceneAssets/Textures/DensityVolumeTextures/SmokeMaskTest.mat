@@ -177,9 +177,9 @@ Material:
     - _Anisotropy: 0
     - _BlendMode: 0
     - _CoatMask: 0
-    - _ColorNoiseScale: 0.05
-    - _ColorOctiveScale2: 0.08
-    - _ColorOctiveStrength: -0.17
+    - _ColorNoiseScale: 0.03
+    - _ColorOctiveScale2: 0.03
+    - _ColorOctiveStrength: 0
     - _ConservativeDepthOffsetEnable: 0
     - _CullMode: 2
     - _CullModeForward: 2
